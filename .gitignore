@@ -1,0 +1,53 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.env.*
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Streamlit cache folder
+.streamlit/
+
+# Logs
+*.log
+
+# Python compiled extensions
+*.so
+
+# Pipenv
+Pipfile.lock
+
+# pytest cache
+.pytest_cache/
+
+# mypy cache
+.mypy_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Others
+*.bak
+*.tmp
