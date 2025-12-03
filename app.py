@@ -5,7 +5,9 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from io import BytesIO
 from PIL import Image
-import random
+from reportlab.lib import colors
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
 
 def number_to_indonesian_words(number):
     units = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan"]
@@ -40,16 +42,16 @@ def number_to_indonesian_words(number):
     else:
         return "Jumlah terlalu besar"
 
-from reportlab.lib import colors
-
 def create_kwitansi_pdf(data, ttd_image=None):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    c.setFillColor(colors.HexColor("#cfe2f3"))
+    # ==== WARNA DASAR HALAMAN ====
+    c.setFillColor(colors.HexColor("#cfe2f3"))  # biru muda background
     c.rect(0, 0, width, height, stroke=0, fill=1)
 
+    # ==== KARTU PUTIH UTAMA (rounded) ====
     card_x = 1.5 * cm
     card_y = 2 * cm
     card_width = width - 3 * cm
@@ -58,6 +60,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
     c.setFillColor(colors.white)
     c.roundRect(card_x, card_y, card_width, card_height, 18, stroke=0, fill=1)
 
+    # ==== HEADER DI DALAM KARTU ====
     header_height = 3 * cm
     c.setFillColor(colors.HexColor("#cfe2f3"))
     c.roundRect(card_x, card_y + card_height - header_height,
@@ -69,15 +72,18 @@ def create_kwitansi_pdf(data, ttd_image=None):
                         card_y + card_height - header_height/2 + 4,
                         "KWITANSI PEMBAYARAN")
 
+    # Garis putih pemisah header
     c.setStrokeColor(colors.white)
     c.setLineWidth(3)
     c.line(card_x, card_y + card_height - header_height,
            card_x + card_width, card_y + card_height - header_height)
 
+    # ==== KONTEN DALAM KARTU ====
     margin_left = card_x + 1.3 * cm
     y = card_y + card_height - header_height - 1.0 * cm
     line_height = 16
 
+    # Baris nomor & tanggal
     c.setFont("Helvetica", 11)
     c.setFillColor(colors.HexColor("#1f4e79"))
     c.drawString(margin_left, y, f"Nomor: {data['nomor']}")
@@ -85,6 +91,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
                       f"Tanggal: {data['tanggal']}")
     y -= line_height * 2
 
+    # Telah diterima dari
     c.setFillColor(colors.black)
     c.setFont("Helvetica", 12)
     c.drawString(margin_left, y, "Telah diterima dari:")
@@ -93,6 +100,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
     c.drawString(margin_left + 15, y, data['penerima'])
     y -= line_height * 2
 
+    # Jumlah uang
     c.setFont("Helvetica", 12)
     c.drawString(margin_left, y, "Sejumlah uang sebesar:")
     y -= line_height
@@ -105,11 +113,13 @@ def create_kwitansi_pdf(data, ttd_image=None):
     )
     y -= line_height * 2
 
+    # Untuk pembayaran
     c.setFillColor(colors.black)
     c.setFont("Helvetica", 12)
     c.drawString(margin_left, y, "Untuk pembayaran:")
     y -= line_height
 
+    # Kotak deskripsi pembayaran
     keterangan_lines = data['keterangan'].split('\n')
     box_height = line_height * (len(keterangan_lines) + 1.5)
     box_width = card_width - 2.6*cm
@@ -118,6 +128,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
 
     y_in_box = y
     c.setFont("Helvetica-Bold", 12)
+    # judul keterangan (baris pertama sebelum titik dua)
     first_line = keterangan_lines[0].strip()
     c.drawString(margin_left + 10, y_in_box, first_line)
     y_in_box -= line_height
@@ -135,6 +146,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
 
     y = box_y
 
+    # Metode pembayaran
     c.setFont("Helvetica", 12)
     c.setFillColor(colors.black)
     c.drawString(margin_left, y, "Metode pembayaran:")
@@ -144,6 +156,7 @@ def create_kwitansi_pdf(data, ttd_image=None):
     c.drawString(margin_left + 15, y, data['metode'])
     y -= line_height * 3
 
+    # Tanda tangan
     c.setFillColor(colors.black)
     c.setFont("Helvetica", 12)
     c.drawString(margin_left, y, "Penerima pembayaran,")
@@ -179,87 +192,57 @@ def create_kwitansi_pdf(data, ttd_image=None):
     buffer.seek(0)
     return buffer
 
+st.title("Generator Kwitansi Pembayaran")
 
-# --- STREAMLIT APP ---
-
-st.title("Generator Kwitansi Pembayaran (Random Data)")
-
-# Generate random data otomatis tanpa input manual
-def random_nomor():
-    return f"{random.randint(1,999):03d}/XX-DEV/{random.randint(1,12):02d}/2025"
-
-def random_tanggal():
-    day = random.randint(1,28)
-    month = random.choice([
-        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-        "Juli", "Agustus", "September", "Oktober", "November", "Desember"])
-    year = 2025
-    return f"{day} {month} {year}"
-
-def random_penerima():
-    names = [
-        "PT. Sukses Mandiri", "CV. Kreatif Solusi", "Yayasan Bantu Sesama",
-        "Universitas Syiah Kuala", "Dinas Pendidikan Aceh"]
-    return random.choice(names)
-
-def random_jumlah():
-    return random.choice([500000, 1000000, 1500000, 2500000, 6000000])
-
-def random_keterangan():
-    options = [
-        """Pengembangan Website Acehnese Archive, meliputi:
-- Pengembangan frontend (UI/UX, layout, navigasi)
-- Pengembangan backend (struktur WordPress & admin panel)
-- Manajemen konten awal
-- Keamanan & server setup
-- Revisi, meeting, dan koordinasi teknis""",
-        """Pengadaan Alat Tulis Kantor:
-- Pembelian kertas, pulpen, dan alat tulis lainnya
-- Distribusi ke seluruh bagian
-- Monitoring dan evaluasi penggunaan""",
-        """Pelatihan Karyawan Baru:
-- Modul pelatihan dasar
-- Workshop dan seminar
-- Evaluasi hasil pelatihan""",
-    ]
-    return random.choice(options)
-
-def random_metode():
-    return random.choice([
-        "Transfer Bank BSI (Bank Syariah Indonesia)",
-        "Tunai (Cash)",
-        "Cek Giro",
-        "Transfer Bank Mandiri"
-    ])
-
-def random_penerima_ttd():
-    return random.choice(["Maulana Ihsan Ahmad", "Dewi Sartika", "Budi Santoso"])
-
-def random_jabatan():
-    return random.choice(["Developer", "Manager Keuangan", "Admin"])
+# Input form
+nomor = st.text_input("Nomor Kwitansi", value="", placeholder="contoh: 001/AA-DEV/XII/2025")
+tanggal = st.date_input("Tanggal", datetime.now())  # tanggal date_input tidak ada placeholder, biarkan default sekarang
+penerima = st.text_input("Telah diterima dari", value="", placeholder="contoh: PT. Sumber Uang")
+jumlah = st.number_input("Jumlah Uang (Rp)", min_value=0, step=1000, value=0, format="%d")
+keterangan = st.text_area("Untuk pembayaran", value="", placeholder="contoh: Pengembangan Website, meliputi:\n- Pengembangan frontend (UI/UX, layout, navigasi)\n- Pengembangan backend (struktur WordPress & admin panel)\n- Manajemen konten awal\n- Keamanan & server setup\n- Revisi, meeting, dan koordinasi teknis")
+metode = st.text_input("Metode pembayaran", value="", placeholder="contoh: Transfer Bank X")
+penerima_ttd = st.text_input("Penerima pembayaran (Nama)", value="", placeholder="contoh: Nama Anda")
+jabatan = st.text_input("Jabatan penerima", value="", placeholder="contoh: (Developer)")
 
 
-data = {
-    "nomor": random_nomor(),
-    "tanggal": random_tanggal(),
-    "penerima": random_penerima(),
-    "jumlah_formatted": f"{random_jumlah():,}".replace(',', '.'),
-    "jumlah_kata": number_to_indonesian_words(random_jumlah()),
-    "keterangan": random_keterangan(),
-    "metode": random_metode(),
-    "penerima_ttd": random_penerima_ttd(),
-    "jabatan": random_jabatan()
-}
+# Upload tanda tangan
+uploaded_ttd = st.file_uploader("Upload gambar tanda tangan (PNG/JPG)", type=["png", "jpg", "jpeg"])
 
-if st.button("Generate Kwitansi PDF dan Download"):
-    pdf_buffer = create_kwitansi_pdf(data)
+ttd_image = None
+if uploaded_ttd:
+    img = Image.open(uploaded_ttd)
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        # Buat background putih
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        # Paste img di background dengan mask alpha channel
+        background.paste(img, mask=img.split()[-1])
+        ttd_image = background
+    else:
+        ttd_image = img.convert("RGB")
+
+if st.button("Generate Kwitansi dan Download PDF"):
+    jumlah_int = int(jumlah)
+    jumlah_kata = number_to_indonesian_words(jumlah_int)
+    jumlah_formatted = f"{jumlah_int:,.0f}".replace(',', '.')
+
+    data = {
+        "nomor": nomor,
+        # lebih kompatibel di Windows juga
+        "tanggal": f"{tanggal.day} {tanggal.strftime('%B %Y')}",
+        "penerima": penerima,
+        "jumlah_formatted": jumlah_formatted,
+        "jumlah_kata": jumlah_kata,
+        "keterangan": keterangan,
+        "metode": metode,
+        "penerima_ttd": penerima_ttd,
+        "jabatan": jabatan
+    }
+
+    pdf_buffer = create_kwitansi_pdf(data, ttd_image)
     st.success("Kwitansi berhasil dibuat!")
     st.download_button(
         label="Download Kwitansi PDF",
         data=pdf_buffer,
-        file_name=f"kwitansi_{data['nomor'].replace('/','_')}.pdf",
+        file_name=f"kwitansi_{nomor.replace('/','_')}.pdf",
         mime="application/pdf"
     )
-else:
-    st.info("Tekan tombol di atas untuk membuat kwitansi dengan data random.")
-
